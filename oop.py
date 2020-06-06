@@ -112,3 +112,21 @@ class Starter:
         with open(self.filename, 'rb') as f:
             starter = f.read()[:44]
             print(starter)
+
+class WAVWriter:
+    def __init__(self, head, new_samples):
+        self.head = head
+        self.new_samples = new_samples
+
+    def writer(self, filename):
+        with open(filename, 'wb') as out:
+            for el in self.head.keys():   # Checking our dictionary
+                if type(self.head[el]) is str:
+                    out.write(pack('>4s', self.head[el].encode('utf-8')))  # Write encoded info
+                elif el in ['audio_format','num_channels','block_align', 'bits_per_sample']:
+                    out.write(pack('<H', self.head[el]))   # Writing numerical info (2-bytes)
+                else:
+                    out.write(pack('<I', self.head[el]))   # Writing 4-byte non-string parameters
+
+        for sample in self.new_samples:  # Writing music data
+            out.write(pack('>B', sample))
