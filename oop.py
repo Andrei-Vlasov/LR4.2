@@ -6,7 +6,7 @@ from sys import argv
 class FileWorker:
     def __init__(self, filename):
         self.filename = filename
-        self.head = {}
+        self.__head = {}
         self.raw_data = None
 
     def get_file_properties(self):
@@ -17,16 +17,16 @@ class FileWorker:
                 print("File is not RIFF-type")
                 return None
             
-            self.head['chunk_id'] = 'RIFF'  # Declared file chunk type
+            self.__head['chunk_id'] = 'RIFF'  # Declared file chunk type
 
             chunk_size = unpack("<L", f.read(4))[0]  # Finding chunk size
-            self.head['chunk_size'] = chunk_size  # Declared chunk size
+            self.__head['chunk_size'] = chunk_size  # Declared chunk size
 
             file_format = f.read(4)
             if file_format != b'WAVE':  # Checking file format
                 print("File is not WAV format")
                 return None
-            self.head['file_format'] = 'WAVE'  # Declaring file format
+            self.__head['file_format'] = 'WAVE'  # Declaring file format
             
             # Processing fmt and data subchunk
             while f.tell() < 8 + chunk_size: # Scrolling through left file
@@ -34,20 +34,20 @@ class FileWorker:
                 sub_chunk_size = unpack('<L', f.read(4))[0]
                 # Checking what info contains a tag we found 
                 if tag == b'fmt ':   # 'fmt ' subchunk
-                    self.head['sub_chunk_1_id'] = 'fmt '
-                    self.head['sub_chunk_1_size'] = sub_chunk_size
+                    self.__head['sub_chunk_1_id'] = 'fmt '
+                    self.__head['sub_chunk_1_size'] = sub_chunk_size
                     fmt_data = f.read(sub_chunk_size)
                     fmt, num_channels, sample_rate, byte_rate, block_align, bits_per_sample = unpack('<HHLLHH', fmt_data)
-                    self.head['audio_format'] = fmt
-                    self.head['num_channels'] = num_channels
-                    self.head['sample_rate'] = sample_rate
-                    self.head['byte_rate'] = byte_rate
-                    self.head['block_align'] = block_align
-                    self.head['bits_per_sample'] = bits_per_sample
+                    self.__head['audio_format'] = fmt
+                    self.__head['num_channels'] = num_channels
+                    self.__head['sample_rate'] = sample_rate
+                    self.__head['byte_rate'] = byte_rate
+                    self.__head['block_align'] = block_align
+                    self.__head['bits_per_sample'] = bits_per_sample
                 # 'data' subchunk
                 elif tag == b'data':
-                    self.head['sub_chunk_2_id'] = 'data'
-                    self.head['sub_chunk_2_size'] = sub_chunk_size
+                    self.__head['sub_chunk_2_id'] = 'data'
+                    self.__head['sub_chunk_2_size'] = sub_chunk_size
                     self.raw_data = f.read(sub_chunk_size)
                     break   # We have already read all data
                 # In case subchunk type not 'fmt ' or 'data'
@@ -56,10 +56,10 @@ class FileWorker:
 
     
     def checking_file_validity(self):
-        return True if self.head['bits_per_sample'] == 8 and self.head['num_channels'] == 1 else False
+        return True if self.__head['bits_per_sample'] == 8 and self.__head['num_channels'] == 1 else False
     
     def get_head(self):
-        return self.head
+        return self.__head
 
     def get_raw_data(self):
         return self.raw_data
@@ -101,14 +101,19 @@ class Interpolator:
         self.new_sub_chunk_2_size = new_sub_chunk_2_size
         self.raw_data = raw_data
 
-    def create_graph(self):  # Find by interpolation
+    def __create_graph(self):  # Find by interpolation
         return interpolate.interp1d(np.array(self.old_coords), np.array(list(self.raw_data)))
 
-    def create_samples(self, graph):
+    def __create_samples(self, graph):
         new_samples = graph(np.array(self.new_coords)).tolist()  # Calculating from function
         for i in range(self.new_sub_chunk_2_size):
             new_samples[i] = round(new_samples[i])  # Making samples whole numbers
         return new_samples
+
+    def perform(self):
+        graph = self.__create_graph()
+        new_samples = self.__create_samples(graph)
+        return graph, new_samples
 
     
 class Starter:
@@ -151,7 +156,7 @@ class AudioApp:
         print('This program slows down 8-bit mono .wav files')
         print('You can also speed them up by typing [xxx.yyy]<1')
         print("Command format: <input.wav> <output.wav> <xxx.yyy>")
-        print("Type EXIT to exit")
+        
         input_file, output_file, speed = self.inp, self.out, self.speed
         speed = float(speed)
         fw = FileWorker(input_file)
@@ -166,8 +171,7 @@ class AudioApp:
             new_sub_chunk_2_size = cr.finding_chunk_sizes(new_coords)
             
             ir = Interpolator(old_coords, new_coords, new_sub_chunk_2_size, raw_data)
-            graph = ir.create_graph()
-            new_samples = ir.create_samples(graph)
+            graph, new_samples = ir.perform()
 
             ww = WAVWriter(head, new_samples)
             ww.writer(output_file)
