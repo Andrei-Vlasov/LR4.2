@@ -1,4 +1,4 @@
-from struct import pack, unpack
+from struct import pack, unpack  # For adding info to binary files
 from scipy import interpolate  # interpolation function
 import numpy as np  # interpolation works only to numpy arrays
 
@@ -56,6 +56,12 @@ class FileWorker:
     
     def checking_file_validity(self):
         return True if self.head['bits_per_sample'] == 8 and self.head['num_channels'] == 1 else False
+    
+    def get_head(self):
+        return self.head
+
+    def get_raw_data(self):
+        return self.raw_data
 
 class Coordinator:
     def __init__(self, times, head):
@@ -85,7 +91,7 @@ class Coordinator:
         new_chunk_size = self.head['chunk_size'] - self.head['sub_chunk_2_size'] + new_sub_chunk_2_size
         self.head['sub_chunk_2_size'] = new_sub_chunk_2_size  # Such as subchunk2 size
         self.head['chunk_size'] = new_chunk_size              # and chunkSize 
-
+        return new_sub_chunk_2_size
 
 class Interpolator:
     def __init__(self, old_coords, new_coords, new_sub_chunk_2_size, raw_data):
@@ -113,6 +119,7 @@ class Starter:
             starter = f.read()[:44]
             print(starter)
 
+
 class WAVWriter:
     def __init__(self, head, new_samples):
         self.head = head
@@ -128,5 +135,46 @@ class WAVWriter:
                 else:
                     out.write(pack('<I', self.head[el]))   # Writing 4-byte non-string parameters
 
-        for sample in self.new_samples:  # Writing music data
-            out.write(pack('>B', sample))
+            for sample in self.new_samples:  # Writing music data
+                out.write(pack('>B', sample))
+
+
+def main_menu():
+    print('This program slows down 8-bit mono .wav files')
+    print('You can also speed them up by typing [xxx.yyy]<1')
+    print("Command format: <input.wav> <output.wav> <xxx.yyy>")
+    print("Type EXIT to exit")
+    while True:
+        user = input(">>> ")
+        com = user.split()
+        if com[0] == "EXIT":
+            break
+        elif len(com) != 3:
+            print("Try again")
+            continue
+        else:
+            input_file, output_file, speed = com
+            speed = float(speed)
+            fw = FileWorker(input_file)
+            fw.get_file_properties()
+            head = fw.get_head()
+            raw_data = fw.get_raw_data()
+
+            if fw.checking_file_validity():
+                cr = Coordinator(speed, head)
+                old_coords = cr.finding_old_coords()
+                new_coords = cr.finding_new_coords()
+                new_sub_chunk_2_size = cr.finding_chunk_sizes(new_coords)
+                
+                ir = Interpolator(old_coords, new_coords, new_sub_chunk_2_size, raw_data)
+                graph = ir.create_graph()
+                new_samples = ir.create_samples(graph)
+
+                ww = WAVWriter(head, new_samples)
+                ww.writer(output_file)
+
+            else:
+                print("File is not valid")
+                continue
+
+main_menu()
