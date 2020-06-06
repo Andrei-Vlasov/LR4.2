@@ -52,3 +52,49 @@ class FileWorker:
                 # In case subchunk type not 'fmt ' or 'data'
                 else:
                     f.seek(sub_chunk_size, 1) 
+
+    
+    def checking_file_validity(self):
+        return True if self.head['bits_per_sample'] == 8 and self.head['num_channels'] == 1 else False
+
+class Coordinator:
+    def __init__(self, times, head):
+        self.times = times  # How much to slow
+        self.head = head   # File header
+
+    def finding_old_coords(self):
+        x = 0
+        old_coords = []   # Ends of old unit segments
+        while x < self.head['sub_chunk_2_size']:
+            old_coords.append(x) # Collecting all possible old x's
+            x += 1
+
+        return old_coords
+
+    def finding_new_coords(self):
+        x = 0
+        new_coords = []    # Ends of new unit segments
+        while x < self.head['sub_chunk_2_size'] - 1:
+            new_coords.append(x)  # Incresing amount of samples
+            x += (1 / self.times)
+
+        return new_coords
+
+    def finding_chunk_sizes(self, new_coords):
+        new_sub_chunk_2_size = len(new_coords) # Finding new characteristics of resulting file
+        new_chunk_size = self.head['chunk_size'] - self.head['sub_chunk_2_size'] + new_sub_chunk_2_size
+        self.head['sub_chunk_2_size'] = new_sub_chunk_2_size  # Such as subchunk2 size
+        self.head['chunk_size'] = new_chunk_size              # and chunkSize 
+
+
+class Interpolator:
+    def __init__(self, old_coords, new_coords, raw_data):
+        self.old_coords = old_coords
+        self.new_coords = new_coords
+        self.raw_data = raw_data
+
+    def create_graph(self):  # Find by interpolation
+        return interpolate.interp1d(np.array(self.old_coords), np.array(list(self.raw_data)))
+
+    def create_samples(self, graph):
+        return graph(np.array(self.new_coords)).tolist()
