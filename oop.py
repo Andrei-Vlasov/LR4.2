@@ -88,13 +88,27 @@ class Coordinator:
 
 
 class Interpolator:
-    def __init__(self, old_coords, new_coords, raw_data):
+    def __init__(self, old_coords, new_coords, new_sub_chunk_2_size, raw_data):
         self.old_coords = old_coords
         self.new_coords = new_coords
+        self.new_sub_chunk_2_size = new_sub_chunk_2_size
         self.raw_data = raw_data
 
     def create_graph(self):  # Find by interpolation
         return interpolate.interp1d(np.array(self.old_coords), np.array(list(self.raw_data)))
 
     def create_samples(self, graph):
-        return graph(np.array(self.new_coords)).tolist()
+        new_samples = graph(np.array(self.new_coords)).tolist()  # Calculating from function
+        for i in range(self.new_sub_chunk_2_size):
+            new_samples[i] = round(new_samples[i])  # Making samples whole numbers
+        return new_samples
+
+    
+class Starter:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def printer(self):
+        with open(self.filename, 'rb') as f:
+            starter = f.read()[:44]
+            print(starter)
