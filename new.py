@@ -23,23 +23,24 @@ with open(filename, "rb") as f:
     if chunkId != b'RIFF':
         print('not a valid RIFF file')
         exit(1)
+    Head['ChunkID'] = 'RIFF'
 
     chunkSize = struct.unpack('<L', f.read(4))[0]
-    print(chunkSize)
+    Head['ChunkSize'] = chunkSize
     format = f.read(4)
     if format != b'WAVE':
         print('not a WAV file')
         exit(1)
+    Head['Format'] = chunkSize
 
     while f.tell() < 8 + chunkSize:
         tag = f.read(4)
         subchunkSize = struct.unpack('<L', f.read(4))[0]
-        print(subchunkSize)
         if tag == b'fmt ':
             Head['Subchunk1Size'] = subchunkSize
             fmtData = f.read(subchunkSize)
             fmt, numChannels, sampleRate, byteRate, blockAlign, bitsPerSample = struct.unpack('<HHLLHH', fmtData)
-            Head['AudioFormat'] = fmt
+            Head['Subchunk1ID'] = fmt
             Head['NumChannels'] = numChannels
             Head['SampleRate'] = sampleRate
             Head['ByteRate'] = byteRate
@@ -47,6 +48,7 @@ with open(filename, "rb") as f:
             Head['BitsPerSample'] = bitsPerSample
 
         elif tag == b'data':
+            Head['Subchunk2ID'] = 'data'
             Head['Subchunk2Size'] = subchunkSize
             rawData = f.read(subchunkSize)
             break
@@ -70,6 +72,11 @@ while x < Head['Subchunk2Size']-1:
     new_coords.append(x)
     x += (1 / q)
 
+new_subchunk2Size = len(new_coords)
+new_chunkSize = Head['ChunkSize'] - Head['Subchunk2Size'] + new_subchunk2Size
+
 graph = interpolate.interp1d(np.array(old_coords), np.array(list(rawData)))  # 3 параметр функции - квадратная, кубическая.. см. scipy interpolate
 new_samples = graph(np.array(new_coords)).tolist()  # через полученную функцию пропускаем новые переменные
 
+
+# new_rawData = struct.pack()
