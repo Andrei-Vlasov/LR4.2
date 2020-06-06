@@ -57,22 +57,19 @@ with open(filename, "rb") as f:
 assert(Head['BitsPerSample'] == 8)
 assert(Head['NumChannels'] == 1)
 
-samples = np.array(list(rawData))
-print(samples)
+
+x = 0
+old_coords = []  # концы старых единичных отрезков
+while x < Head['Subchunk2Size']:
+    old_coords.append(x)
+    x += 1
 
 x = 0
 new_coords = []  # концы новых единичных отрезков
-while x < Head['Subchunk2Size']:
+while x < Head['Subchunk2Size']-1:
     new_coords.append(x)
     x += (1 / q)
 
-# graph = interpolate.interp1d(np.array(old_coords),
-#                              np.array(Data))  # 3 параметр функции - квадратная, кубическая.. см. scipy interpolate
-# new_data = graph(np.array(new_coords))  # через полученную функцию пропускаем новые переменные
-# new_data = list(new_data)  # np array -> array. Это обязательно?
-# for i in range(len(new_data)):  # числа от 0 до 1 -> 16ичные значения
-#     new_data[i] = int(new_data[i] * 256)
-#     new_data[i] = hex(new_data[i])
-#     new_data[i] = new_data[i].replace('0x', '')  # убираем стандартный 0х из строки
-#     if len(new_data[i]) == 1:  # нам их предстоит склеивать
-#         new_data[i] = '0' + new_data[i]
+graph = interpolate.interp1d(np.array(old_coords), np.array(list(rawData)))  # 3 параметр функции - квадратная, кубическая.. см. scipy interpolate
+new_samples = graph(np.array(new_coords)).tolist()  # через полученную функцию пропускаем новые переменные
+
