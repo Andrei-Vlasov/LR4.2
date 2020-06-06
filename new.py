@@ -36,6 +36,7 @@ with open(filename, "rb") as f:
         subchunkSize = struct.unpack('<L', f.read(4))[0]
         print(subchunkSize)
         if tag == b'fmt ':
+            Head['Subchunk1Size'] = subchunkSize
             fmtData = f.read(subchunkSize)
             fmt, numChannels, sampleRate, byteRate, blockAlign, bitsPerSample = struct.unpack('<HHLLHH', fmtData)
             Head['AudioFormat'] = fmt
@@ -46,14 +47,12 @@ with open(filename, "rb") as f:
             Head['BitsPerSample'] = bitsPerSample
 
         elif tag == b'data':
+            Head['Subchunk2Size'] = subchunkSize
             rawData = f.read(subchunkSize)
             break
 
         else:
             f.seek(subchunkSize, 1)
-
-blockAlign = Head['BlockAlign']
-numChannels = Head['NumChannels']
 
 assert(Head['BitsPerSample'] == 8)
 assert(Head['NumChannels'] == 1)
@@ -61,12 +60,12 @@ assert(Head['NumChannels'] == 1)
 samples = np.array(list(rawData))
 print(samples)
 
-# x = 0
-# new_coords = []  # концы новых единичных отрезков
-# while x <= Subchunk2Size - 1:
-#     new_coords.append(x)
-#     x += (1 / q)
-#
+x = 0
+new_coords = []  # концы новых единичных отрезков
+while x < Head['Subchunk2Size']:
+    new_coords.append(x)
+    x += (1 / q)
+
 # graph = interpolate.interp1d(np.array(old_coords),
 #                              np.array(Data))  # 3 параметр функции - квадратная, кубическая.. см. scipy interpolate
 # new_data = graph(np.array(new_coords))  # через полученную функцию пропускаем новые переменные

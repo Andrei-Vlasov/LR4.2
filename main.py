@@ -3,8 +3,6 @@ from scipy import interpolate  # функция интерполяции
 import numpy as np  # функция интерполяции работает с numpy массивами
 from copy import deepcopy
 from sys import exit, byteorder  # преждевременное завершение программы, если файл не по формату
-import struct
-print(byteorder)
 
 def main():
 
@@ -15,14 +13,9 @@ def main():
     filename = user[0]
     with open(filename, 'rb') as f:  # read as binary
         content = f.read()  # файл как байт-строка
-        content = struct.unpack('<h', content)
-    i=0
-    while True:
-        print(content[i])
-        i+=1
-    # # hexdata = binascii.hexlify(content)  # байты из байт-строки склеиваются в байт-строку в виде последовательности 16ичных чисел
-    # # hexdata = hexdata.decode("utf-8")  # байт-строка->строка
-    # split_bytes = []  # массив всех байтов - храним как массив строчек, потому что 16ичные числа содержат буквы
+    hexdata = binascii.hexlify(content)  # байты из байт-строки склеиваются в байт-строку в виде последовательности 16ичных чисел
+    hexdata = hexdata.decode("utf-8")  # байт-строка->строка
+    split_bytes = []  # массив всех байтов - храним как массив строчек, потому что 16ичные числа содержат буквы
     for i in range(0, len(hexdata), 2):  # добавляем в массив 16ичные значения по 2 символа из строки
         split_bytes.append(hexdata[i:i+2])
 
